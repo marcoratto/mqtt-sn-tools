@@ -201,8 +201,6 @@ void mqtt_sn_send_packet_ext(int sock, const void* data, size_t len)
 {
     ssize_t sent = 0;
 
-    printf("len= %lu\n", len);
-    
     print_hex(data, len);
 
     // If forwarder encapsulation enabled, wrap packet
@@ -356,6 +354,8 @@ void* mqtt_sn_receive_frwdencap_packet(int sock, uint8_t **wireless_node_id, uin
 
     // Store the last time that we received a packet
     last_receive = time(NULL);
+
+	print_hex(packet, bytes_read);
 
     return packet;
 }
@@ -1182,9 +1182,11 @@ void mqtt_sn_log_err(const char * format, ...)
 }
 
 void print_hex(const void *buffer, size_t length) {
-    const uint8_t *data = (const uint8_t *)buffer;  // Cast a array di byte
-    for (size_t i = 0; i < length; i++) {
-        printf("%02X", data[i]);  // Stampa ogni byte in esadecimale con due cifre
-    }
-    printf("\n");
+	if (debug) {
+		const uint8_t *data = (const uint8_t *)buffer;  // Cast a array di byte
+		for (size_t i = 0; i < length; i++) {
+			printf("%02X", data[i]);  // Stampa ogni byte in esadecimale con due cifre
+		}
+		printf("\n");
+	}
 }
