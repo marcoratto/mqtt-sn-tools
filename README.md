@@ -19,12 +19,12 @@ Supported Features
 - Displaying topic name with wildcard subscriptions
 - Pre-defined topic IDs and short topic names
 - Forwarder encapsulation according to MQTT-SN Protocol Specification v1.2.
-
+- Publishing extended messages (> 255 bytes)
 
 Limitations
 -----------
 
-- Packets must be 255 or less bytes long
+- Packets must be 255 or less bytes long (subscribe)
 - No Last Will and Testament
 - No QoS 2
 - No automatic re-sending of lost packets
