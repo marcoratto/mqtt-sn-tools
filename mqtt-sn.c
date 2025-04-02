@@ -175,6 +175,35 @@ void mqtt_sn_send_packet(int sock, const void* data)
 {
     ssize_t sent = 0;
     size_t len = ((uint8_t*)data)[0];
+    
+    print_hex(data, sizeof(data));
+
+    // If forwarder encapsulation enabled, wrap packet
+    if (forwarder_encapsulation) {
+        return mqtt_sn_send_frwdencap_packet(sock, data, wireless_node_id, wireless_node_id_len);
+    }
+
+    if (debug > 1) {
+        mqtt_sn_log_debug("Sending  %2lu bytes. Type=%s on Socket: %d.", (long unsigned int)len,
+                          mqtt_sn_type_string(((uint8_t*)data)[1]), sock);
+    }
+
+    sent = send(sock, data, len, 0);
+    if (sent != len) {
+        mqtt_sn_log_warn("Only sent %d of %d bytes", (int)sent, (int)len);
+    }
+
+    // Store the last time that we sent a packet
+    last_transmit = time(NULL);
+}
+
+void mqtt_sn_send_packet_ext(int sock, const void* data, size_t len)
+{
+    ssize_t sent = 0;
+
+    printf("len= %lu\n", len);
+    
+    print_hex(data, len);
 
     // If forwarder encapsulation enabled, wrap packet
     if (forwarder_encapsulation) {
@@ -421,33 +450,68 @@ static uint8_t mqtt_sn_get_qos_flag(int8_t qos)
     }
 }
 
-void mqtt_sn_send_publish(int sock, uint16_t topic_id, uint8_t topic_type, const void* data, uint16_t data_len, int8_t qos, uint8_t retain)
+void mqtt_sn_send_publish(int sock, uint16_t topic_id, uint8_t topic_type, const void* data, uint16_t data_len, int8_t qos, uint8_t retain) 
 {
-    publish_packet_t packet;
-    memset(&packet, 0, sizeof(packet));
+	if (data_len > MQTT_SN_MAX_PACKET_LENGTH) {
+		mqtt_sn_log_debug("Publish extended...");
+			
+		publish_ext_packet_t packet;
+		memset(&packet, 0, sizeof(packet));
+		
+		if (data_len > sizeof(packet.data)) {
+			mqtt_sn_log_err("Payload is too big");
+			exit(EXIT_FAILURE);
+		}
 
-    if (data_len > sizeof(packet.data)) {
-        mqtt_sn_log_err("Payload is too big");
-        exit(EXIT_FAILURE);
-    }
+		packet.type = MQTT_SN_TYPE_PUBLISH;
+		packet.flags = 0x00;
+		if (retain)
+			packet.flags += MQTT_SN_FLAG_RETAIN;
+		packet.flags += mqtt_sn_get_qos_flag(qos);
+		packet.flags += (topic_type & 0x3);
+		packet.topic_id = htons(topic_id);
+		if (qos > 0) {
+			packet.message_id = htons(next_message_id++);
+		} else {
+			packet.message_id = 0x0000;
+		}
 
-    packet.type = MQTT_SN_TYPE_PUBLISH;
-    packet.flags = 0x00;
-    if (retain)
-        packet.flags += MQTT_SN_FLAG_RETAIN;
-    packet.flags += mqtt_sn_get_qos_flag(qos);
-    packet.flags += (topic_type & 0x3);
-    packet.topic_id = htons(topic_id);
-    if (qos > 0) {
-        packet.message_id = htons(next_message_id++);
-    } else {
-        packet.message_id = 0x0000;
-    }
-    memcpy(packet.data, data, sizeof(packet.data));
-    packet.length = 0x07 + data_len;
+		memcpy(packet.data, data, data_len);
+		
+		packet.length = 0x01;
+		packet.lengthExtended = htons(0x09 + data_len);
+		
+		mqtt_sn_log_debug("Sending PUBLISH with Extended packet...");
+		print_hex(&packet, 0x09 + data_len);
+        mqtt_sn_send_packet_ext(sock, &packet, 0x09 + data_len);
+	} else {
+		mqtt_sn_log_debug("Publish...");
+		publish_packet_t packet;
+		memset(&packet, 0, sizeof(packet));
 
-    mqtt_sn_log_debug("Sending PUBLISH packet...");
-    mqtt_sn_send_packet(sock, &packet);
+		if (data_len > sizeof(packet.data)) {
+			mqtt_sn_log_err("Payload is too big");
+			exit(EXIT_FAILURE);
+		}
+
+		packet.type = MQTT_SN_TYPE_PUBLISH;
+		packet.flags = 0x00;
+		if (retain)
+			packet.flags += MQTT_SN_FLAG_RETAIN;
+		packet.flags += mqtt_sn_get_qos_flag(qos);
+		packet.flags += (topic_type & 0x3);
+		packet.topic_id = htons(topic_id);
+		if (qos > 0) {
+			packet.message_id = htons(next_message_id++);
+		} else {
+			packet.message_id = 0x0000;
+		}
+		memcpy(packet.data, data, sizeof(packet.data));
+		packet.length = 0x07 + data_len;	
+		
+		mqtt_sn_log_debug("Sending PUBLISH packet...");
+        mqtt_sn_send_packet(sock, &packet);
+	}
 
     if (qos == 1) {
         // Now wait for a PUBACK
@@ -1115,4 +1179,12 @@ void mqtt_sn_log_err(const char * format, ...)
     va_start(arglist, format);
     mqtt_sn_log_msg("ERROR ", format, arglist);
     va_end(arglist);
+}
+
+void print_hex(const void *buffer, size_t length) {
+    const uint8_t *data = (const uint8_t *)buffer;  // Cast a array di byte
+    for (size_t i = 0; i < length; i++) {
+        printf("%02X", data[i]);  // Stampa ogni byte in esadecimale con due cifre
+    }
+    printf("\n");
 }

@@ -41,6 +41,11 @@
 #define MQTT_SN_MAX_PACKET_LENGTH  (255)
 #define MQTT_SN_MAX_PAYLOAD_LENGTH (MQTT_SN_MAX_PACKET_LENGTH-7)
 #define MQTT_SN_MAX_TOPIC_LENGTH   (MQTT_SN_MAX_PACKET_LENGTH-6)
+
+#define MQTT_SN_MAX_PACKET_EXT_LENGTH  (65535)
+#define MQTT_SN_MAX_PAYLOAD_EXT_LENGTH (MQTT_SN_MAX_PACKET_EXT_LENGTH-7)
+#define MQTT_SN_MAX_TOPIC_EXT_LENGTH   (MQTT_SN_MAX_PACKET_EXT_LENGTH-6)
+
 #define MQTT_SN_MAX_CLIENT_ID_LENGTH  (23)
 #define MQTT_SN_MAX_WIRELESS_NODE_ID_LENGTH  (252)
 
@@ -138,6 +143,17 @@ publish_packet_t;
 
 typedef struct __attribute__((packed)) {
     uint8_t length;
+    uint16_t lengthExtended;
+    uint8_t type;
+    uint8_t flags;
+    uint16_t topic_id;
+    uint16_t message_id;
+    char data[MQTT_SN_MAX_PAYLOAD_EXT_LENGTH];
+}
+publish_ext_packet_t;
+
+typedef struct __attribute__((packed)) {
+    uint8_t length;
     uint8_t type;
     uint16_t topic_id;
     uint16_t message_id;
@@ -205,6 +221,7 @@ uint16_t mqtt_sn_receive_regack(int sock);
 uint16_t mqtt_sn_receive_suback(int sock);
 void mqtt_sn_dump_packet(char* packet);
 void mqtt_sn_print_publish_packet(publish_packet_t* packet);
+void mqtt_sn_send_packet_ext(int sock, const void* data, size_t len);
 int mqtt_sn_select(int sock);
 void* mqtt_sn_wait_for(uint8_t type, int sock);
 void mqtt_sn_register_topic(int topic_id, const char* topic_name);
@@ -238,4 +255,5 @@ void mqtt_sn_log_debug(const char * format, ...);
 void mqtt_sn_log_warn(const char * format, ...);
 void mqtt_sn_log_err(const char * format, ...);
 
+void print_hex(const void *buffer, size_t length);
 #endif
