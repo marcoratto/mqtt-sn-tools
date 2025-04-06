@@ -1244,11 +1244,26 @@ void mqtt_sn_log_err(const char * format, ...)
 }
 
 void print_hex(const void *buffer, size_t length) {
-	if (debug) {
-		const uint8_t *data = (const uint8_t *)buffer;  // Cast a array di byte
-		for (size_t i = 0; i < length; i++) {
-			printf("%02X", data[i]);  // Stampa ogni byte in esadecimale con due cifre
-		}
-		printf("\n");
-	}
+    if (!debug || buffer == NULL || length == 0) {
+        return;
+    }
+
+    const uint8_t *data = (const uint8_t *)buffer;
+
+    // Ogni byte richiede 2 caratteri esadecimali + opzionalmente uno spazio + terminatore '\0'
+    size_t bufsize = (length * 2) + 1;
+    char *hexstr = (char *)malloc(bufsize);
+
+    if (!hexstr) {
+        mqtt_sn_log_err("Errore allocazione memoria\n");
+        exit(EXIT_FAILURE);
+    }
+
+    for (size_t i = 0; i < length; i++) {
+        sprintf(&hexstr[i * 2], "%02X", data[i]);
+    }
+
+    hexstr[bufsize - 1] = '\0';  // assicurati che sia null-terminata
+    mqtt_sn_log_debug("HEX payload is '%s'\n", hexstr);
+    free(hexstr);
 }
