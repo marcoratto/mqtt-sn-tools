@@ -132,7 +132,7 @@ typedef struct {
 } regack_packet_t;
 
 typedef struct __attribute__((packed)) {
-    uint8_t length;
+	uint8_t length;
     uint8_t type;
     uint8_t flags;
     uint16_t topic_id;
@@ -142,8 +142,8 @@ typedef struct __attribute__((packed)) {
 publish_packet_t;
 
 typedef struct __attribute__((packed)) {
-    uint8_t length;
-    uint16_t lengthExtended;
+	uint8_t length;
+	uint16_t lengthExtended;
     uint8_t type;
     uint8_t flags;
     uint16_t topic_id;
@@ -211,6 +211,8 @@ void mqtt_sn_send_connect(int sock, const char* client_id, uint16_t keepalive, u
 void mqtt_sn_send_register(int sock, const char* topic_name);
 void mqtt_sn_send_publish(int sock, uint16_t topic_id, uint8_t topic_type, const void* data, uint16_t data_len, int8_t qos, uint8_t retain);
 void mqtt_sn_send_puback(int sock, publish_packet_t* publish, uint8_t return_code);
+void mqtt_sn_send_puback_ext(int sock, publish_ext_packet_t* publish, uint8_t return_code);
+
 void mqtt_sn_send_subscribe_topic_name(int sock, const char* topic_name, uint8_t qos);
 void mqtt_sn_send_subscribe_topic_id(int sock, uint16_t topic_id, uint8_t qos);
 void mqtt_sn_send_pingreq(int sock);

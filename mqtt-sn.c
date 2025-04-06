@@ -257,8 +257,7 @@ uint8_t mqtt_sn_validate_packet(const void *packet, size_t length)
     }
 
     if (buf[0] == 0x01) {
-        mqtt_sn_log_warn("Packet received is longer than this tool can handle");
-        return FALSE;
+        mqtt_sn_log_debug("Packet received is extended type");
     }
 
     // When forwarder encapsulation is enabled each packet must be FRWDENCAP type
@@ -269,12 +268,20 @@ uint8_t mqtt_sn_validate_packet(const void *packet, size_t length)
 
     // If packet is forwarder encapsulation expected packet length is sum of forwarder encapsulation
     // header and length of encapsulated packet.
-    if ((buf[1] == MQTT_SN_TYPE_FRWDENCAP && buf[0] + buf[buf[0]] != length) ||
+    if (buf[0] == 0x01) {
+		uint16_t len_ext = ((uint8_t *)buf)[1] << 8 | ((uint8_t *)buf)[2];
+        if (len_ext != length) {
+			mqtt_sn_log_warn("Read %d bytes but packet length is %d bytes.", (int) length, len_ext);	
+			return FALSE;	
+		}
+	} else {
+	    if ((buf[1] == MQTT_SN_TYPE_FRWDENCAP && buf[0] + buf[buf[0]] != length) ||
             (buf[1] != MQTT_SN_TYPE_FRWDENCAP && buf[0] != length)) {
-        mqtt_sn_log_warn("Read %d bytes but packet length is %d bytes.", (int)length,
+						 mqtt_sn_log_warn("Read %d bytes but packet length is %d bytes.", (int)length,
                          buf[1] != MQTT_SN_TYPE_FRWDENCAP ? (int)buf[0] : (int)(buf[0] + buf[buf[0]]));
-        return FALSE;
-    }
+			return FALSE;
+		}
+	}
 
     return TRUE;
 }
@@ -525,6 +532,22 @@ void mqtt_sn_send_publish(int sock, uint16_t topic_id, uint8_t topic_type, const
 }
 
 void mqtt_sn_send_puback(int sock, publish_packet_t* publish, uint8_t return_code)
+{
+    puback_packet_t puback;
+    memset(&puback, 0, sizeof(puback));
+
+    puback.type = MQTT_SN_TYPE_PUBACK;
+    puback.topic_id = publish->topic_id;
+    puback.message_id = publish->message_id;
+    puback.return_code = return_code;
+    puback.length = 0x07;
+
+    mqtt_sn_log_debug("Sending PUBACK packet...");
+
+    mqtt_sn_send_packet(sock, &puback);
+}
+
+void mqtt_sn_send_puback_ext(int sock, publish_ext_packet_t* publish, uint8_t return_code)
 {
     puback_packet_t puback;
     memset(&puback, 0, sizeof(puback));
@@ -923,41 +946,80 @@ void* mqtt_sn_wait_for(uint8_t type, int sock)
         } else if (ret > 0) {
             char* packet = mqtt_sn_receive_packet(sock);
             if (packet) {
-                switch(packet[1]) {
-                    case MQTT_SN_TYPE_PUBLISH:
-                        mqtt_sn_print_publish_packet((publish_packet_t *)packet);
-                        break;
+				if (packet[0] == 0x01) {
+					switch(packet[3]) {
+						case MQTT_SN_TYPE_PUBLISH:
+							mqtt_sn_print_publish_packet((publish_packet_t *)packet);
+							break;
 
-                    case MQTT_SN_TYPE_REGISTER:
-                        mqtt_sn_process_register(sock, (register_packet_t*)packet);
-                        break;
+						case MQTT_SN_TYPE_REGISTER:
+							mqtt_sn_process_register(sock, (register_packet_t*)packet);
+							break;
 
-                    case MQTT_SN_TYPE_PINGRESP:
-                        // do nothing
-                        break;
+						case MQTT_SN_TYPE_PINGRESP:
+							// do nothing
+							break;
 
-                    case MQTT_SN_TYPE_DISCONNECT:
-                        if (type != MQTT_SN_TYPE_DISCONNECT) {
-                            mqtt_sn_log_warn("Received DISCONNECT from gateway.");
-                            exit(EXIT_FAILURE);
-                        }
-                        break;
+						case MQTT_SN_TYPE_DISCONNECT:
+							if (type != MQTT_SN_TYPE_DISCONNECT) {
+								mqtt_sn_log_warn("Received DISCONNECT from gateway.");
+								exit(EXIT_FAILURE);
+							}
+							break;
 
-                    default:
-                        if (packet[1] != type) {
-                            mqtt_sn_log_warn(
-                                "Was expecting %s packet but received: %s",
-                                mqtt_sn_type_string(type),
-                                mqtt_sn_type_string(packet[1])
-                            );
-                        }
-                        break;
-                }
+						default:
+							if (packet[3] != type) {
+								mqtt_sn_log_warn(
+									"Was expecting %s packet but received: %s",
+									mqtt_sn_type_string(type),
+									mqtt_sn_type_string(packet[1])
+								);
+							}
+							break;
+					}
 
-                // Did we find what we were looking for?
-                if (packet[1] == type) {
-                    return packet;
-                }
+					// Did we find what we were looking for?
+					if (packet[3] == type) {
+						return packet;
+					}
+				} else {
+						switch(packet[1]) {
+						case MQTT_SN_TYPE_PUBLISH:
+							mqtt_sn_print_publish_packet((publish_packet_t *)packet);
+							break;
+
+						case MQTT_SN_TYPE_REGISTER:
+							mqtt_sn_process_register(sock, (register_packet_t*)packet);
+							break;
+
+						case MQTT_SN_TYPE_PINGRESP:
+							// do nothing
+							break;
+
+						case MQTT_SN_TYPE_DISCONNECT:
+							if (type != MQTT_SN_TYPE_DISCONNECT) {
+								mqtt_sn_log_warn("Received DISCONNECT from gateway.");
+								exit(EXIT_FAILURE);
+							}
+							break;
+
+						default:
+							if (packet[1] != type) {
+								mqtt_sn_log_warn(
+									"Was expecting %s packet but received: %s",
+									mqtt_sn_type_string(type),
+									mqtt_sn_type_string(packet[1])
+								);
+							}
+							break;
+					}
+
+					// Did we find what we were looking for?
+					if (packet[1] == type) {
+						return packet;
+					}
+				}
+  
             }
         }
 

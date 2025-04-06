@@ -256,20 +256,42 @@ int main(int argc, char* argv[])
             // Wait for the subscription acknowledgment
             mqtt_sn_receive_suback(sock);
         }
+        
+        void *buffer = malloc(MQTT_SN_MAX_PACKET_EXT_LENGTH);
+		if (!buffer) {
+			mqtt_sn_log_err("Failed to allocate memory");
+			exit(EXIT_FAILURE);
+		}
 
         // Keep processing packets until process is terminated
         while(keep_running) {
-            publish_packet_t *packet = mqtt_sn_wait_for(MQTT_SN_TYPE_PUBLISH, sock);
-            if (packet) {
-                uint8_t packet_qos = packet->flags & MQTT_SN_FLAG_QOS_MASK;
-                if (packet_qos == MQTT_SN_FLAG_QOS_1) {
-                    mqtt_sn_send_puback(sock, packet, MQTT_SN_ACCEPTED);
-                }
+			// publish_packet_t *packet = mqtt_sn_wait_for(MQTT_SN_TYPE_PUBLISH, sock);
+            buffer = mqtt_sn_wait_for(MQTT_SN_TYPE_PUBLISH, sock);
+            if (buffer) {
+			    uint8_t first_byte = ((uint8_t *)buffer)[0];
+				if (first_byte == 0x01) {
+					publish_ext_packet_t *packet = (publish_ext_packet_t *)buffer;										
+				 	uint8_t packet_qos = packet->flags & MQTT_SN_FLAG_QOS_MASK;
+					if (packet_qos == MQTT_SN_FLAG_QOS_1) {
+						mqtt_sn_send_puback_ext(sock, packet, MQTT_SN_ACCEPTED);
+					}
 
-                if (single_message) {
-                    break;
-                }
-            }
+					if (single_message) {
+						break;
+					}
+				} else {
+					publish_packet_t *packet = (publish_packet_t *)buffer;
+				 	uint8_t packet_qos = packet->flags & MQTT_SN_FLAG_QOS_MASK;
+					if (packet_qos == MQTT_SN_FLAG_QOS_1) {
+						mqtt_sn_send_puback(sock, packet, MQTT_SN_ACCEPTED);
+					}
+
+					if (single_message) {
+						break;
+					}
+				}
+			}
+
         }
 
         // Finally, disconnect
