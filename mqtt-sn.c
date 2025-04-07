@@ -1318,16 +1318,12 @@ void mqtt_sn_send_will_topic_name(int sock, const char* topic_name, uint8_t qos,
 		packet.flags |= MQTT_SN_FLAG_RETAIN;
 	}
 	
-	printf("flags: %02X.\n", MQTT_SN_FLAG_RETAIN);
-
     packet.flags += mqtt_sn_get_qos_flag(qos);
     if (topic_name_len == 2) {
         packet.flags |= MQTT_SN_TOPIC_TYPE_SHORT;
     } else {
         packet.flags |= MQTT_SN_TOPIC_TYPE_NORMAL;
-        printf("flags: %02X.\n", MQTT_SN_TOPIC_TYPE_NORMAL);
     }
-    printf("flags: %02X.\n", packet.flags);
     strncpy(packet.topic_name, topic_name, sizeof(packet.topic_name));
     packet.topic_name[sizeof(packet.topic_name)-1] = '\0';
     packet.length = 0x03 + topic_name_len;
