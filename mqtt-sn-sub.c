@@ -61,28 +61,40 @@ uint8_t single_message = FALSE;
 uint8_t clean_session = TRUE;
 uint8_t verbose = 0;
 
+uint8_t lwt_enabled = FALSE;
+int8_t lwt_qos = 0;
+uint8_t lwt_retain = FALSE;
+const char *lwt_topic = NULL;
+const char *lwt_payload = NULL;
+
 uint8_t keep_running = TRUE;
 
 static void usage()
 {
     fprintf(stderr, "Usage: mqtt-sn-sub [opts] -t <topic>\n");
     fprintf(stderr, "\n");
-    fprintf(stderr, "  -1             exit after receiving a single message.\n");
-    fprintf(stderr, "  -c             disable 'clean session' (store subscription and pending messages when client disconnects).\n");
-    fprintf(stderr, "  -d             Increase debug level by one. -d can occur multiple times.\n");
-    fprintf(stderr, "  -h <host>      MQTT-SN host to connect to. Defaults to '%s'.\n", mqtt_sn_host);
-    fprintf(stderr, "  -i <clientid>  ID to use for this client. Defaults to 'mqtt-sn-tools-' with process id.\n");
-    fprintf(stderr, "  -k <keepalive> keep alive in seconds for this client. Defaults to %d.\n", keep_alive);
-    fprintf(stderr, "  -e <sleep>     sleep duration in seconds when disconnecting. Defaults to %d.\n", sleep_duration);
-    fprintf(stderr, "  -p <port>      Network port to connect to. Defaults to %s.\n", mqtt_sn_port);
-    fprintf(stderr, "  -q <qos>       QoS level to subscribe with (0 or 1). Defaults to %d.\n", qos);
-    fprintf(stderr, "  -t <topic>     MQTT-SN topic name to subscribe to. It may repeat multiple times.\n");
-    fprintf(stderr, "  -T <topicid>   Pre-defined MQTT-SN topic ID to subscribe to. It may repeat multiple times.\n");
-    fprintf(stderr, "  --fe           Enables Forwarder Encapsulation. Mqtt-sn packets are encapsulated according to MQTT-SN Protocol Specification v1.2, chapter 5.5 Forwarder Encapsulation.\n");
-    fprintf(stderr, "  --wlnid        If Forwarder Encapsulation is enabled, wireless node ID for this client. Defaults to process id.\n");
-    fprintf(stderr, "  --cport <port> Source port for outgoing packets. Uses port in ephemeral range if not specified or set to %d.\n", source_port);
-    fprintf(stderr, "  -v             Print messages verbosely, showing the topic name.\n");
-    fprintf(stderr, "  -V             Print messages verbosely, showing current time and the topic name.\n");
+    fprintf(stderr, "  -1                       exit after receiving a single message.\n");
+    fprintf(stderr, "  -c                       disable 'clean session' (store subscription and pending messages when client disconnects).\n");
+    fprintf(stderr, "  -d                       Increase debug level by one. -d can occur multiple times.\n");
+    fprintf(stderr, "  -h <host>                MQTT-SN host to connect to. Defaults to '%s'.\n", mqtt_sn_host);
+    fprintf(stderr, "  -i <clientid>            ID to use for this client. Defaults to 'mqtt-sn-tools-' with process id.\n");
+    fprintf(stderr, "  -k <keepalive>           keep alive in seconds for this client. Defaults to %d.\n", keep_alive);
+    fprintf(stderr, "  -e <sleep>               sleep duration in seconds when disconnecting. Defaults to %d.\n", sleep_duration);
+    fprintf(stderr, "  -p <port>                Network port to connect to. Defaults to %s.\n", mqtt_sn_port);
+    fprintf(stderr, "  -q <qos>                 QoS level to subscribe with (0 or 1). Defaults to %d.\n", qos);
+    fprintf(stderr, "  -t <topic>               MQTT-SN topic name to subscribe to. It may repeat multiple times.\n");
+    fprintf(stderr, "  -T <topicid>             Pre-defined MQTT-SN topic ID to subscribe to. It may repeat multiple times.\n");
+    fprintf(stderr, "  --fe                     Enables Forwarder Encapsulation. Mqtt-sn packets are encapsulated according to MQTT-SN Protocol Specification v1.2, chapter 5.5 Forwarder Encapsulation.\n");
+    fprintf(stderr, "  --wlnid                  If Forwarder Encapsulation is enabled, wireless node ID for this client. Defaults to process id.\n");
+    fprintf(stderr, "  --cport <port>           Source port for outgoing packets. Uses port in ephemeral range if not specified or set to %d.\n", source_port);
+    fprintf(stderr, "  -v                       Print messages verbosely, showing the topic name.\n");
+    fprintf(stderr, "  -V                       Print messages verbosely, showing current time and the topic name.\n");
+    fprintf(stderr, "  --will-payload <message> Payload for the client Will, which is sent by the broker in case of\n");
+	fprintf(stderr, "                           unexpected disconnection. If not given and will-topic is set, a zero\n");
+	fprintf(stderr, "                           length message will be sent.\n");
+	fprintf(stderr, "  --will-qos <qos>         QoS level for the client Will.\n");
+	fprintf(stderr, "  --will-retain            If given, make the client Will retained.\n");
+	fprintf(stderr, "  --will-topic <topic>     The topic on which to publish the client Will.\n");
     exit(EXIT_FAILURE);
 }
 
@@ -93,6 +105,10 @@ static void parse_opts(int argc, char** argv)
         {"fe",    no_argument,       0, 1000 },
         {"wlnid", required_argument, 0, 1001 },
         {"cport", required_argument, 0, 1002 },
+        {"will-payload", required_argument, 0, 1003 },
+        {"will-qos", required_argument, 0, 1004 },
+        {"will-retain", no_argument, 0, 1005 },
+        {"will-topic", required_argument, 0, 1006 },
         {0, 0, 0, 0}
     };
 
@@ -168,7 +184,23 @@ static void parse_opts(int argc, char** argv)
             case 1002:
                 source_port = atoi(optarg);
                 break;
+                
+            case 1003:
+                lwt_payload = optarg;
+                break;    
+                
+            case 1004:
+                lwt_qos = atoi(optarg);
+                break;
+            
+            case 1005:
+                lwt_retain = TRUE;
+                break;
 
+            case 1006:
+                lwt_topic = optarg;
+                break;
+                                
             case 'v':
                 // Prevent -v setting verbose level back down to 1 if already set to 2 by -V
                 verbose = (verbose == 0) ? 1 : verbose;
@@ -187,6 +219,16 @@ static void parse_opts(int argc, char** argv)
     // Missing Parameter?
     if (!topic_name_index && !predef_topic_id_index) {
         usage();
+    }
+    
+    if (lwt_qos != 0 && lwt_qos != 1) {
+        mqtt_sn_log_err("Only LWT QoS level 0 or 1 is supported.");
+        exit(EXIT_FAILURE);
+    }
+    
+    if (lwt_topic && lwt_payload) {
+		mqtt_sn_log_debug("LWT enabled '%s' with payload '%s'", lwt_topic, lwt_payload);
+        lwt_enabled = TRUE;
     }
 }
 
@@ -232,7 +274,17 @@ int main(int argc, char* argv[])
     if (sock) {
         // Connect to server
         mqtt_sn_log_debug("Connecting...");
-        mqtt_sn_send_connect(sock, client_id, keep_alive, clean_session);
+        mqtt_sn_send_connect(sock, client_id, keep_alive, clean_session, lwt_enabled);
+        
+        if (lwt_enabled) {
+			mqtt_sn_receive_will_topic_request(sock);		
+			mqtt_sn_send_will_topic_name(sock, lwt_topic, lwt_qos, lwt_retain);
+			
+			mqtt_sn_receive_will_message_request(sock);
+			
+			mqtt_sn_send_will_message(sock, lwt_payload);
+		}
+        
         mqtt_sn_receive_connack(sock);
 
         uint16_t i;

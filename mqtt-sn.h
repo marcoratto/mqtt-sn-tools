@@ -87,7 +87,6 @@
 #define MQTT_SN_TOPIC_TYPE_PREDEFINED (0x01)
 #define MQTT_SN_TOPIC_TYPE_SHORT      (0x02)
 
-
 #define MQTT_SN_FLAG_DUP      (0x1 << 7)
 #define MQTT_SN_FLAG_QOS_0    (0x0 << 5)
 #define MQTT_SN_FLAG_QOS_1    (0x1 << 5)
@@ -204,10 +203,63 @@ typedef struct topic_map {
     struct topic_map *next;
 } topic_map_t;
 
+typedef struct __attribute__((packed)) {
+	uint8_t length;
+    uint8_t type;
+    char data[MQTT_SN_MAX_PAYLOAD_LENGTH];
+}
+will_msg_packet_t;
+
+typedef struct {
+    uint8_t length;
+    uint8_t type;
+} will_msg_req_packet_t;
+
+typedef struct {
+    uint8_t length;
+    uint8_t type;
+    uint8_t return_code;
+} will_msg_res_packet_t;
+
+typedef struct __attribute__((packed)) {
+	uint8_t length;
+    uint8_t type;
+    char data[MQTT_SN_MAX_PAYLOAD_LENGTH];
+}
+will_msg_update_packet_t;
+
+typedef struct __attribute__((packed)) {
+    uint8_t length;
+    uint8_t type;
+    uint8_t flags;
+    char topic_name[MQTT_SN_MAX_TOPIC_LENGTH];
+}
+will_topic_packet_t;
+
+typedef struct {
+    uint8_t length;
+    uint8_t type;
+} will_topic_req_packet_t;
+
+typedef struct {
+    uint8_t length;
+    uint8_t type;
+    uint8_t return_code;
+} will_topic_res_packet_t;
+
+typedef struct __attribute__((packed)) {
+    uint8_t length;
+    uint8_t type;
+    uint8_t flags;
+    char topic_name[MQTT_SN_MAX_TOPIC_LENGTH];
+}
+will_topic_update_packet_t;
 
 // Library functions
 int mqtt_sn_create_socket(const char* host, const char* port, uint16_t source_port);
-void mqtt_sn_send_connect(int sock, const char* client_id, uint16_t keepalive, uint8_t clean_session);
+
+void mqtt_sn_send_connect(int sock, const char* client_id, uint16_t keepalive, uint8_t clean_session, uint8_t lwt);
+
 void mqtt_sn_send_register(int sock, const char* topic_name);
 void mqtt_sn_send_publish(int sock, uint16_t topic_id, uint8_t topic_type, const void* data, uint16_t data_len, int8_t qos, uint8_t retain);
 void mqtt_sn_send_puback(int sock, publish_packet_t* publish, uint8_t return_code);
@@ -229,6 +281,11 @@ void* mqtt_sn_wait_for(uint8_t type, int sock);
 void mqtt_sn_register_topic(int topic_id, const char* topic_name);
 const char* mqtt_sn_lookup_topic(int topic_id);
 void mqtt_sn_cleanup();
+
+void mqtt_sn_receive_will_topic_request(int sock);
+void mqtt_sn_receive_will_message_request(int sock);
+void mqtt_sn_send_will_topic_name(int sock, const char* topic_name, uint8_t qos, uint8_t retain);
+void mqtt_sn_send_will_message(int sock, const char* message);
 
 void mqtt_sn_set_debug(uint8_t value);
 void mqtt_sn_set_verbose(uint8_t value);

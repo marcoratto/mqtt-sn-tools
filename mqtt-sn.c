@@ -176,7 +176,7 @@ void mqtt_sn_send_packet(int sock, const void* data)
     ssize_t sent = 0;
     size_t len = ((uint8_t*)data)[0];
     
-    print_hex(data, sizeof(data));
+    print_hex(data, len);
 
     // If forwarder encapsulation enabled, wrap packet
     if (forwarder_encapsulation) {
@@ -367,7 +367,7 @@ void* mqtt_sn_receive_frwdencap_packet(int sock, uint8_t **wireless_node_id, uin
     return packet;
 }
 
-void mqtt_sn_send_connect(int sock, const char* client_id, uint16_t keepalive, uint8_t clean_session)
+void mqtt_sn_send_connect(int sock, const char* client_id, uint16_t keepalive, uint8_t clean_session, uint8_t lwt)
 {
     connect_packet_t packet;
     memset(&packet, 0, sizeof(packet));
@@ -381,6 +381,11 @@ void mqtt_sn_send_connect(int sock, const char* client_id, uint16_t keepalive, u
     // Create the CONNECT packet
     packet.type = MQTT_SN_TYPE_CONNECT;
     packet.flags = clean_session ? MQTT_SN_FLAG_CLEAN : 0;
+    
+    if (lwt == TRUE) {
+		packet.flags += MQTT_SN_FLAG_WILL;
+	}
+    
     packet.protocol_id = MQTT_SN_PROTOCOL_ID;
     packet.duration = htons(keepalive);
 
@@ -672,6 +677,38 @@ void mqtt_sn_receive_connack(int sock)
         mqtt_sn_log_err("CONNECT error: %s", mqtt_sn_return_code_string(packet->return_code));
         exit(packet->return_code);
     }
+}
+
+void mqtt_sn_receive_will_topic_request(int sock)
+{
+    will_topic_req_packet_t *packet = mqtt_sn_receive_packet(sock);
+
+    if (packet == NULL) {
+        mqtt_sn_log_err("Failed to connect to MQTT-SN gateway.");
+        exit(EXIT_FAILURE);
+    }
+
+    if (packet->type != MQTT_SN_TYPE_WILLTOPICREQ) {
+        mqtt_sn_log_err("Was expecting WILLTOPICREQ packet but received: %s", mqtt_sn_type_string(packet->type));
+        exit(EXIT_FAILURE);
+    }
+
+}
+
+void mqtt_sn_receive_will_message_request(int sock)
+{
+    will_msg_req_packet_t *packet = mqtt_sn_receive_packet(sock);
+
+    if (packet == NULL) {
+        mqtt_sn_log_err("Failed to connect to MQTT-SN gateway.");
+        exit(EXIT_FAILURE);
+    }
+
+    if (packet->type != MQTT_SN_TYPE_WILLMSGREQ) {
+        mqtt_sn_log_err("Was expecting WILLMSGREQ packet but received: %s", mqtt_sn_type_string(packet->type));
+        exit(EXIT_FAILURE);
+    }
+
 }
 
 static int mqtt_sn_process_register(int sock, const register_packet_t *packet)
@@ -1264,6 +1301,55 @@ void print_hex(const void *buffer, size_t length) {
     }
 
     hexstr[bufsize - 1] = '\0';  // assicurati che sia null-terminata
-    mqtt_sn_log_debug("HEX payload is '%s'\n", hexstr);
+    mqtt_sn_log_debug("HEX payload is '%s'", hexstr);
     free(hexstr);
+}
+
+void mqtt_sn_send_will_topic_name(int sock, const char* topic_name, uint8_t qos, uint8_t retain)
+{
+    size_t topic_name_len = strlen(topic_name);
+    will_topic_packet_t packet;
+    memset(&packet, 0, sizeof(packet));
+
+    packet.type = MQTT_SN_TYPE_WILLTOPIC;
+    packet.flags = 0x00;
+    
+	if (retain) {
+		packet.flags |= MQTT_SN_FLAG_RETAIN;
+	}
+	
+	printf("flags: %02X.\n", MQTT_SN_FLAG_RETAIN);
+
+    packet.flags += mqtt_sn_get_qos_flag(qos);
+    if (topic_name_len == 2) {
+        packet.flags |= MQTT_SN_TOPIC_TYPE_SHORT;
+    } else {
+        packet.flags |= MQTT_SN_TOPIC_TYPE_NORMAL;
+        printf("flags: %02X.\n", MQTT_SN_TOPIC_TYPE_NORMAL);
+    }
+    printf("flags: %02X.\n", packet.flags);
+    strncpy(packet.topic_name, topic_name, sizeof(packet.topic_name));
+    packet.topic_name[sizeof(packet.topic_name)-1] = '\0';
+    packet.length = 0x03 + topic_name_len;
+
+    mqtt_sn_log_debug("Sending WILLTOPIC packet...");
+
+    mqtt_sn_send_packet(sock, &packet);
+}
+
+void mqtt_sn_send_will_message(int sock, const char* message)
+{
+    size_t msg_len = strlen(message);
+    will_msg_packet_t packet;
+    memset(&packet, 0, sizeof(packet));
+
+    packet.type = MQTT_SN_TYPE_WILLMSG;
+        
+    strncpy(packet.data, message, sizeof(packet.data));
+    packet.data[sizeof(packet.data)-1] = '\0';
+    packet.length = 0x02 + msg_len;
+
+    mqtt_sn_log_debug("Sending WILLMSG packet...");
+
+    mqtt_sn_send_packet(sock, &packet);
 }
