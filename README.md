@@ -59,9 +59,7 @@ Publishing
 	  --fe                     Enables Forwarder Encapsulation. Mqtt-sn packets are encapsulated according to MQTT-SN Protocol Specification v1.2, chapter 5.5 Forwarder Encapsulation.
 	  --wlnid                  If Forwarder Encapsulation is enabled, wireless node ID for this client. Defaults to process id.
 	  --cport <port>           Source port for outgoing packets. Uses port in ephemeral range if not specified or set to 0.
-	  --will-payload <message> Payload for the client Will, which is sent by the broker in case of
-							   unexpected disconnection. If not given and will-topic is set, a zero
-							   length message will be sent.
+	  --will-payload <message> Payload for the client Will, which is sent by the broker in case of unexpected disconnection. If not given and will-topic is set, a zero length message will be sent.
 	  --will-qos <qos>         QoS level for the client Will.
 	  --will-retain            If given, make the client Will retained.
 	  --will-topic <topic>     The topic on which to publish the client Will.
@@ -87,9 +85,7 @@ Subscribing
 	  --cport <port>           Source port for outgoing packets. Uses port in ephemeral range if not specified or set to 0.
 	  -v                       Print messages verbosely, showing the topic name.
 	  -V                       Print messages verbosely, showing current time and the topic name.
-	  --will-payload <message> Payload for the client Will, which is sent by the broker in case of
-							   unexpected disconnection. If not given and will-topic is set, a zero
-							   length message will be sent.
+	  --will-payload <message> Payload for the client Will, which is sent by the broker in case of unexpected disconnection. If not given and will-topic is set, a zero length message will be sent.
 	  --will-qos <qos>         QoS level for the client Will.
 	  --will-retain            If given, make the client Will retained.
 	  --will-topic <topic>     The topic on which to publish the client Will.
