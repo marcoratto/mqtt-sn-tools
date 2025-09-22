@@ -26,6 +26,7 @@ Supported Features
 Limitations
 -----------
 
+- No Wildcards on subscribing topics
 - No QoS 2
 - No automatic re-sending of lost packets
 - No Automatic gateway discovery

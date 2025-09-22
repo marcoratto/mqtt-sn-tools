@@ -34,7 +34,7 @@
 #define TRUE  (1)
 #endif
 
-#define MQTT_SN_DEFAULT_PORT       "1883"
+#define MQTT_SN_DEFAULT_PORT       "2442"
 #define MQTT_SN_DEFAULT_TIMEOUT    (10)
 #define MQTT_SN_DEFAULT_KEEP_ALIVE (10)
 
@@ -314,5 +314,8 @@ void mqtt_sn_log_debug(const char * format, ...);
 void mqtt_sn_log_warn(const char * format, ...);
 void mqtt_sn_log_err(const char * format, ...);
 
+const char* mqtt_sn_lookup_topic_filter(const char *topic);
+int doesTopicMatch(const char *topic, const char *topicFilter);
+	
 void print_hex(const void *buffer, size_t length);
 #endif

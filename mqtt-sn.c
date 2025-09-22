@@ -747,6 +747,7 @@ void mqtt_sn_register_topic(int topic_id, const char* topic_name)
     // Look for the topic id
     while (*ptr) {
         if ((*ptr)->topic_id == topic_id) {
+			mqtt_sn_log_debug("Found topic ID 0x%4.4x for topic %s", topic_id, topic_name);
             break;
         } else {
             ptr = &((*ptr)->next);
@@ -891,7 +892,7 @@ void mqtt_sn_print_publish_packet(publish_packet_t* packet)
                 const char *topic_name = mqtt_sn_lookup_topic(topic_id);
                 if (topic_name) {
                     printf("%s: %s\n", topic_name, packet->data);
-                }
+                } 
                 break;
             };
             case MQTT_SN_TOPIC_TYPE_PREDEFINED: {
@@ -1348,4 +1349,52 @@ void mqtt_sn_send_will_message(int sock, const char* message)
     mqtt_sn_log_debug("Sending WILLMSG packet...");
 
     mqtt_sn_send_packet(sock, &packet);
+}
+
+const char* mqtt_sn_lookup_topic_filter(const char *topicFilter)
+{
+    topic_map_t **ptr = &topic_map;
+
+    while (*ptr) {
+        if (doesTopicMatch((*ptr)->topic_name, topicFilter)) {
+			mqtt_sn_log_warn("Found topic id 0x%4.4x with topic '%s' for topic filter '%s'", (*ptr)->topic_id, (*ptr)->topic_name, topicFilter);
+			return (*ptr)->topic_name;
+		}
+        ptr = &((*ptr)->next);
+    }
+
+    mqtt_sn_log_warn("Failed to lookup filter '%s'", topicFilter);
+    return NULL;
+}
+
+int doesTopicMatch(const char *topic, const char *topicFilter) {
+    while (*topicFilter) {
+        if (*topicFilter == '#') {
+            return *(topicFilter + 1) == '\0';
+        }
+
+        if (*topicFilter == '+') {
+            if (*topic == '\0') return FALSE;
+
+            while (*topic && *topic != '/') {
+                topic++;
+            }
+
+            topicFilter++;
+        } else {
+            if (*topic != *topicFilter) return 0;
+
+            topic++;
+            topicFilter++;
+        }
+
+        if (*topic == '/' && *topicFilter == '/') {
+            topic++;
+            topicFilter++;
+        } else if (*topic == '/' || *topicFilter == '/') {
+            return FALSE;
+        }
+    }
+
+    return *topic == '\0' && *topicFilter == '\0';
 }
