@@ -256,10 +256,6 @@ uint8_t mqtt_sn_validate_packet(const void *packet, size_t length)
         return FALSE;
     }
 
-    if (buf[0] == 0x01) {
-        mqtt_sn_log_debug("Packet received is extended type");
-    }
-
     // When forwarder encapsulation is enabled each packet must be FRWDENCAP type
     if (forwarder_encapsulation && buf[1] != MQTT_SN_TYPE_FRWDENCAP) {
         mqtt_sn_log_warn("Expecting FRWDENCAP packet and got Type=%s.", mqtt_sn_type_string(buf[1]));
@@ -282,7 +278,7 @@ uint8_t mqtt_sn_validate_packet(const void *packet, size_t length)
 			return FALSE;
 		}
 	}
-
+	mqtt_sn_log_debug("Packet is valid");
     return TRUE;
 }
 
