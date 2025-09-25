@@ -248,8 +248,9 @@ static void parse_opts(int argc, char** argv)
 
 static void publish_file(int sock, const char* filename)
 {
-    char buffer[MQTT_SN_MAX_PAYLOAD_LENGTH];
-    uint16_t message_len = 0;
+    // char buffer[MQTT_SN_MAX_PAYLOAD_LENGTH];
+    size_t message_len = 0;
+    
     FILE* file = NULL;
 
     if (strcmp(filename, "-") == 0) {
@@ -262,10 +263,12 @@ static void publish_file(int sock, const char* filename)
         perror("Failed to open message file");
         exit(EXIT_FAILURE);
     }
-
+    
     if (one_message_per_line) {
         // One message per line
         while(!feof(file) && !ferror(file)) {
+			char buffer[MQTT_SN_MAX_PAYLOAD_LENGTH];
+			
             char* message = fgets(buffer, MQTT_SN_MAX_PAYLOAD_LENGTH, file);
             if (message) {
                 char* end = strpbrk(message, "\n\r");
@@ -281,8 +284,28 @@ static void publish_file(int sock, const char* filename)
             }
         }
     } else {
-        // One message until EOF
-        message_len = fread(buffer, 1, MQTT_SN_MAX_PAYLOAD_LENGTH, file);
+		fseek(file, 0, SEEK_END);
+		long fsize = ftell(file);
+		fseek(file, 0, SEEK_SET);
+
+		mqtt_sn_log_debug("Read %ld bytes\n", fsize);
+		
+		if (fsize > MQTT_SN_MAX_PAYLOAD_EXT_LENGTH) {
+			fprintf(stderr, "File is too big (max %d bytes)", MQTT_SN_MAX_PAYLOAD_EXT_LENGTH);
+			fclose(file);
+			exit(EXIT_FAILURE);
+		}
+
+		char *buffer = (char *) malloc(fsize + 1);
+		if (!buffer) {
+			perror("Cannot allocate memory");
+			fclose(file);
+			exit(EXIT_FAILURE);
+		}
+		
+		memset(buffer, 0, fsize+1);		
+		message_len = fread(buffer, 1, fsize, file);
+		buffer[message_len] = '\0'; 
         if (ferror(file)) {
             perror("Failed to read message file");
             exit(EXIT_FAILURE);
@@ -290,7 +313,9 @@ static void publish_file(int sock, const char* filename)
             mqtt_sn_log_warn("Input file is longer than the maximum message size");
         }
 
-        mqtt_sn_send_publish(sock, topic_id, topic_id_type, buffer, message_len, qos, retain);
+		mqtt_sn_send_publish(sock, topic_id, topic_id_type, buffer, message_len, qos, retain);
+        
+		free(buffer);
     }
 
     fclose(file);

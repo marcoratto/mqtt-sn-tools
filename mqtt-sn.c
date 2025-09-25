@@ -171,30 +171,9 @@ int mqtt_sn_create_socket(const char* host, const char* port, uint16_t source_po
     return fd;
 }
 
-void mqtt_sn_send_packet(int sock, const void* data)
-{
-    ssize_t sent = 0;
-    size_t len = ((uint8_t*)data)[0];
-    
-    print_hex(data, len);
-
-    // If forwarder encapsulation enabled, wrap packet
-    if (forwarder_encapsulation) {
-        return mqtt_sn_send_frwdencap_packet(sock, data, wireless_node_id, wireless_node_id_len);
-    }
-
-    if (debug > 1) {
-        mqtt_sn_log_debug("Sending  %2lu bytes. Type=%s on Socket: %d.", (long unsigned int)len,
-                          mqtt_sn_type_string(((uint8_t*)data)[1]), sock);
-    }
-
-    sent = send(sock, data, len, 0);
-    if (sent != len) {
-        mqtt_sn_log_warn("Only sent %d of %d bytes", (int)sent, (int)len);
-    }
-
-    // Store the last time that we sent a packet
-    last_transmit = time(NULL);
+void mqtt_sn_send_packet(int sock, const void* data) {
+    size_t len = ((uint8_t*)data)[0];    
+    mqtt_sn_send_packet_ext(sock, data, len);
 }
 
 void mqtt_sn_send_packet_ext(int sock, const void* data, size_t len)
@@ -282,17 +261,16 @@ uint8_t mqtt_sn_validate_packet(const void *packet, size_t length)
     return TRUE;
 }
 
-void* mqtt_sn_receive_packet(int sock)
-{
+void* mqtt_sn_receive_packet(int sock) {
     uint8_t *wireless_node_id  = NULL;
     uint8_t wireless_node_id_len = 0;
 
     return mqtt_sn_receive_frwdencap_packet(sock, &wireless_node_id, &wireless_node_id_len);
 }
 
-void* mqtt_sn_receive_frwdencap_packet(int sock, uint8_t **wireless_node_id, uint8_t *wireless_node_id_len)
-{
-    static uint8_t buffer[MQTT_SN_MAX_PACKET_LENGTH + MQTT_SN_MAX_WIRELESS_NODE_ID_LENGTH + 3  + 1];
+void* mqtt_sn_receive_frwdencap_packet(int sock, uint8_t **wireless_node_id, uint8_t *wireless_node_id_len) {
+    // static uint8_t buffer[MQTT_SN_MAX_PACKET_LENGTH + MQTT_SN_MAX_WIRELESS_NODE_ID_LENGTH + 3  + 1];
+    static uint8_t buffer[MQTT_SN_MAX_PACKET_EXT_LENGTH];    
     struct sockaddr_storage addr;
     socklen_t slen = sizeof(addr);
     uint8_t *packet = buffer;
@@ -460,7 +438,7 @@ static uint8_t mqtt_sn_get_qos_flag(int8_t qos)
 
 void mqtt_sn_send_publish(int sock, uint16_t topic_id, uint8_t topic_type, const void* data, uint16_t data_len, int8_t qos, uint8_t retain) 
 {
-	if (data_len > MQTT_SN_MAX_PACKET_LENGTH) {
+	if (data_len > MQTT_SN_MAX_PAYLOAD_LENGTH) {
 		mqtt_sn_log_debug("Publish extended...");
 			
 		publish_ext_packet_t packet;
@@ -738,12 +716,12 @@ void mqtt_sn_register_topic(int topic_id, const char* topic_name)
         return;
     }
 
-    mqtt_sn_log_debug("Registering topic 0x%4.4x: %s", topic_id, topic_name);
+    mqtt_sn_log_debug("Registering topic %d: %s", topic_id, topic_name);
 
     // Look for the topic id
     while (*ptr) {
         if ((*ptr)->topic_id == topic_id) {
-			mqtt_sn_log_debug("Found topic ID 0x%4.4x for topic %s", topic_id, topic_name);
+			mqtt_sn_log_debug("Found topic ID %d for topic %s", topic_id, topic_name);
             break;
         } else {
             ptr = &((*ptr)->next);
@@ -934,7 +912,7 @@ uint16_t mqtt_sn_receive_suback(int sock)
 
     // Return the topic ID returned by the gateway
     received_topic_id = ntohs(packet->topic_id);
-    mqtt_sn_log_debug("SUBACK topic id: 0x%4.4x", received_topic_id);
+    mqtt_sn_log_debug("SUBACK topic id: %d", received_topic_id);
 
     return received_topic_id;
 }
