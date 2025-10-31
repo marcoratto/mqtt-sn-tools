@@ -9,7 +9,7 @@ Command line tools written in C for the MQTT-SN (MQTT for Sensor Networks) proto
 Supported Features
 ------------------
 
-- QoS 0, 1 and -1
+- QoS 0,1,2 and -1
 - Keep alive pings
 - Publishing retained messages
 - Publishing empty messages
@@ -26,8 +26,6 @@ Supported Features
 Limitations
 -----------
 
-- No Wildcards on subscribing topics
-- No QoS 2
 - No automatic re-sending of lost packets
 - No Automatic gateway discovery
 
@@ -40,56 +38,60 @@ Just run 'make' on a POSIX system.
 Publishing
 ----------
 
-	Usage: mqtt-sn-pub [opts] -t <topic> -m <message>
+Usage: mqtt-sn-pub [opts] -t <topic> -m <message>
 
-	  -d                       Increase debug level by one. -d can occur multiple times.
-	  -f <file>                A file to send as the message payload.
-	  -h <host>                MQTT-SN host to connect to. Defaults to '127.0.0.1'.
-	  -i <clientid>            ID to use for this client. Defaults to 'mqtt-sn-tools-' with process id.
-	  -k <keepalive>           keep alive in seconds for this client. Defaults to 10.
-	  -e <sleep>               sleep duration in seconds when disconnecting. Defaults to 0.
-	  -m <message>             Message payload to send.
-	  -l                       Read from STDIN, one message per line.
-	  -n                       Send a null (zero length) message.
-	  -p <port>                Network port to connect to. Defaults to 1883.
-	  -q <qos>                 Quality of Service value (0, 1 or -1). Defaults to 0.
-	  -r                       Message should be retained.
-	  -s                       Read one whole message from STDIN.
-	  -t <topic>               MQTT-SN topic name to publish to.
-	  -T <topicid>             Pre-defined MQTT-SN topic ID to publish to.
-	  --fe                     Enables Forwarder Encapsulation. Mqtt-sn packets are encapsulated according to MQTT-SN Protocol Specification v1.2, chapter 5.5 Forwarder Encapsulation.
-	  --wlnid                  If Forwarder Encapsulation is enabled, wireless node ID for this client. Defaults to process id.
-	  --cport <port>           Source port for outgoing packets. Uses port in ephemeral range if not specified or set to 0.
-	  --will-payload <message> Payload for the client Will, which is sent by the broker in case of unexpected disconnection. If not given and will-topic is set, a zero length message will be sent.
-	  --will-qos <qos>         QoS level for the client Will.
-	  --will-retain            If given, make the client Will retained.
-	  --will-topic <topic>     The topic on which to publish the client Will.
+  -d                       Increase debug level by one. -d can occur multiple times.
+  -f <file>                A file to send as the message payload.
+  -h <host>                MQTT-SN host to connect to. Defaults to '127.0.0.1'.
+  -i <clientid>            ID to use for this client. Defaults to 'mqtt-sn-tools-' with process id.
+  -k <keepalive>           keep alive in seconds for this client. Defaults to 10.
+  -e <sleep>               sleep duration in seconds when disconnecting. Defaults to 0.
+  -m <message>             Message payload to send.
+  -l                       Read from STDIN, one message per line.
+  -n                       Send a null (zero length) message.
+  -p <port>                Network port to connect to. Defaults to 2442.
+  -q <qos>                 Quality of Service value (0,1,2 or -1). Defaults to 0.
+  -r                       Message should be retained.
+  -s                       Read one whole message from STDIN.
+  -t <topic>               MQTT-SN topic name to publish to.
+  -T <topicid>             Pre-defined MQTT-SN topic ID to publish to.
+  --fe                     Enables Forwarder Encapsulation. Mqtt-sn packets are encapsulated according to MQTT-SN Protocol Specification v1.2, chapter 5.5 Forwarder Encapsulation.
+  --wlnid                  If Forwarder Encapsulation is enabled, wireless node ID for this client. Defaults to process id.
+  --cport <port>           Source port for outgoing packets. Uses port in ephemeral range if not specified or set to 0.
+  --will-payload <message> Payload for the client Will, which is sent by the broker in case of
+                           unexpected disconnection. If not given and will-topic is set, a zero
+                           length message will be sent.
+  --will-qos <qos>         QoS level for the client Will.
+  --will-retain            If given, make the client Will retained.
+  --will-topic <topic>     The topic on which to publish the client Will.
 
 Subscribing
 -----------
 
-	Usage: mqtt-sn-sub [opts] -t <topic>
+Usage: mqtt-sn-sub [opts] -t <topic>
 
-	  -1                       exit after receiving a single message.
-	  -c                       disable 'clean session' (store subscription and pending messages when client disconnects).
-	  -d                       Increase debug level by one. -d can occur multiple times.
-	  -h <host>                MQTT-SN host to connect to. Defaults to '127.0.0.1'.
-	  -i <clientid>            ID to use for this client. Defaults to 'mqtt-sn-tools-' with process id.
-	  -k <keepalive>           keep alive in seconds for this client. Defaults to 10.
-	  -e <sleep>               sleep duration in seconds when disconnecting. Defaults to 0.
-	  -p <port>                Network port to connect to. Defaults to 1883.
-	  -q <qos>                 QoS level to subscribe with (0 or 1). Defaults to 0.
-	  -t <topic>               MQTT-SN topic name to subscribe to. It may repeat multiple times.
-	  -T <topicid>             Pre-defined MQTT-SN topic ID to subscribe to. It may repeat multiple times.
-	  --fe                     Enables Forwarder Encapsulation. Mqtt-sn packets are encapsulated according to MQTT-SN Protocol Specification v1.2, chapter 5.5 Forwarder Encapsulation.
-	  --wlnid                  If Forwarder Encapsulation is enabled, wireless node ID for this client. Defaults to process id.
-	  --cport <port>           Source port for outgoing packets. Uses port in ephemeral range if not specified or set to 0.
-	  -v                       Print messages verbosely, showing the topic name.
-	  -V                       Print messages verbosely, showing current time and the topic name.
-	  --will-payload <message> Payload for the client Will, which is sent by the broker in case of unexpected disconnection. If not given and will-topic is set, a zero length message will be sent.
-	  --will-qos <qos>         QoS level for the client Will.
-	  --will-retain            If given, make the client Will retained.
-	  --will-topic <topic>     The topic on which to publish the client Will.
+  -1                       exit after receiving a single message.
+  -c                       disable 'clean session' (store subscription and pending messages when client disconnects).
+  -d                       Increase debug level by one. -d can occur multiple times.
+  -h <host>                MQTT-SN host to connect to. Defaults to '127.0.0.1'.
+  -i <clientid>            ID to use for this client. Defaults to 'mqtt-sn-tools-' with process id.
+  -k <keepalive>           keep alive in seconds for this client. Defaults to 10.
+  -e <sleep>               sleep duration in seconds when disconnecting. Defaults to 0.
+  -p <port>                Network port to connect to. Defaults to 2442.
+  -q <qos>                 QoS level to subscribe with (0 or 1). Defaults to 0.
+  -t <topic>               MQTT-SN topic name to subscribe to. It may repeat multiple times.
+  -T <topicid>             Pre-defined MQTT-SN topic ID to subscribe to. It may repeat multiple times.
+  --fe                     Enables Forwarder Encapsulation. Mqtt-sn packets are encapsulated according to MQTT-SN Protocol Specification v1.2, chapter 5.5 Forwarder Encapsulation.
+  --wlnid                  If Forwarder Encapsulation is enabled, wireless node ID for this client. Defaults to process id.
+  --cport <port>           Source port for outgoing packets. Uses port in ephemeral range if not specified or set to 0.
+  -v                       Print messages verbosely, showing the topic name.
+  -V                       Print messages verbosely, showing current time and the topic name.
+  --will-payload <message> Payload for the client Will, which is sent by the broker in case of
+                           unexpected disconnection. If not given and will-topic is set, a zero
+                           length message will be sent.
+  --will-qos <qos>         QoS level for the client Will.
+  --will-retain            If given, make the client Will retained.
+  --will-topic <topic>     The topic on which to publish the client Will.
 
 Dumping
 -------
