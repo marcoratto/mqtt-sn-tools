@@ -499,7 +499,7 @@ void mqtt_sn_send_publish(int sock, uint16_t topic_id, uint8_t topic_type, const
         mqtt_sn_send_packet(sock, &packet);
 	}
 
-    if (qos == 1) {
+    if (qos == MQTT_SN_QOS_1) {
         // Now wait for a PUBACK
         puback_packet_t *puback = mqtt_sn_wait_for(MQTT_SN_TYPE_PUBACK, sock);
         if (puback) {
@@ -507,7 +507,7 @@ void mqtt_sn_send_publish(int sock, uint16_t topic_id, uint8_t topic_type, const
         } else {
             mqtt_sn_log_warn("Failed to receive PUBACK after PUBLISH");
         }
-    } else if (qos == 2) {
+    } else if (qos == MQTT_SN_QOS_2) {
 		pubrec_packet_t *pubrec = mqtt_sn_wait_for(MQTT_SN_TYPE_PUBREC, sock);
         if (pubrec) {
             mqtt_sn_log_debug("Received PUBREC");

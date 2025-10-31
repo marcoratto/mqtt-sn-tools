@@ -99,6 +99,11 @@
 
 #define MQTT_SN_PROTOCOL_ID  (0x01)
 
+#define MQTT_SN_QOS_0    0
+#define MQTT_SN_QOS_1    1
+#define MQTT_SN_QOS_2    2
+#define MQTT_SN_QOS_N1  -1
+
 typedef struct {
     uint8_t length;
     uint8_t type;
