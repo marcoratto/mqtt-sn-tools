@@ -501,13 +501,34 @@ void mqtt_sn_send_publish(int sock, uint16_t topic_id, uint8_t topic_type, const
 
     if (qos == 1) {
         // Now wait for a PUBACK
-        puback_packet_t *packet = mqtt_sn_wait_for(MQTT_SN_TYPE_PUBACK, sock);
-        if (packet) {
+        puback_packet_t *puback = mqtt_sn_wait_for(MQTT_SN_TYPE_PUBACK, sock);
+        if (puback) {
             mqtt_sn_log_debug("Received PUBACK");
         } else {
             mqtt_sn_log_warn("Failed to receive PUBACK after PUBLISH");
         }
-    }
+    } else if (qos == 2) {
+		pubrec_packet_t *pubrec = mqtt_sn_wait_for(MQTT_SN_TYPE_PUBREC, sock);
+        if (pubrec) {
+            mqtt_sn_log_debug("Received PUBREC");
+        } else {
+            mqtt_sn_log_warn("Failed to receive PUBREC after PUBLISH");
+        }		
+        pubrel_packet_t pubrel;
+        memset(&pubrel, 0, sizeof(pubrel));
+        pubrel.type = MQTT_SN_TYPE_PUBREL;
+        pubrel.message_id = pubrec->message_id;
+        pubrel.length = 4;
+		mqtt_sn_log_debug("Sending PUBREC packet...");
+        mqtt_sn_send_packet(sock, &pubrel);    
+        
+		pubcomp_packet_t *pubcomp = mqtt_sn_wait_for(MQTT_SN_TYPE_PUBCOMP, sock);
+        if (pubcomp) {
+            mqtt_sn_log_debug("Received PUBCOMP");
+        } else {
+            mqtt_sn_log_warn("Failed to receive PUBCOMP after PUBLISH");
+        }	            
+	}
 }
 
 void mqtt_sn_send_puback(int sock, publish_packet_t* publish, uint8_t return_code)

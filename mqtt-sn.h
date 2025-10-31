@@ -137,8 +137,7 @@ typedef struct __attribute__((packed)) {
     uint16_t topic_id;
     uint16_t message_id;
     char data[MQTT_SN_MAX_PAYLOAD_LENGTH];
-}
-publish_packet_t;
+} publish_packet_t;
 
 typedef struct __attribute__((packed)) {
 	uint8_t length;
@@ -148,8 +147,7 @@ typedef struct __attribute__((packed)) {
     uint16_t topic_id;
     uint16_t message_id;
     char data[MQTT_SN_MAX_PAYLOAD_EXT_LENGTH];
-}
-publish_ext_packet_t;
+} publish_ext_packet_t;
 
 typedef struct __attribute__((packed)) {
     uint8_t length;
@@ -157,8 +155,25 @@ typedef struct __attribute__((packed)) {
     uint16_t topic_id;
     uint16_t message_id;
     uint8_t return_code;
-}
-puback_packet_t;
+} puback_packet_t;
+
+typedef struct __attribute__((packed)) {
+    uint8_t length;
+    uint8_t type;
+    uint16_t message_id;
+} pubrec_packet_t;
+
+typedef struct __attribute__((packed)) {
+    uint8_t length;
+    uint8_t type;
+    uint16_t message_id;
+} pubrel_packet_t;
+
+typedef struct __attribute__((packed)) {
+    uint8_t length;
+    uint8_t type;
+    uint16_t message_id;
+} pubcomp_packet_t;
 
 typedef struct __attribute__((packed)) {
     uint8_t length;
@@ -169,8 +184,7 @@ typedef struct __attribute__((packed)) {
         char topic_name[MQTT_SN_MAX_TOPIC_LENGTH];
         uint16_t topic_id;
     };
-}
-subscribe_packet_t;
+} subscribe_packet_t;
 
 typedef struct __attribute__((packed)) {
     uint8_t length;

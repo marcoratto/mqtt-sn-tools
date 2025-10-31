@@ -72,7 +72,7 @@ static void usage()
     fprintf(stderr, "  -l                       Read from STDIN, one message per line.\n");
     fprintf(stderr, "  -n                       Send a null (zero length) message.\n");
     fprintf(stderr, "  -p <port>                Network port to connect to. Defaults to %s.\n", mqtt_sn_port);
-    fprintf(stderr, "  -q <qos>                 Quality of Service value (0, 1 or -1). Defaults to %d.\n", qos);
+    fprintf(stderr, "  -q <qos>                 Quality of Service value (0,1,2 or -1). Defaults to %d.\n", qos);
     fprintf(stderr, "  -r                       Message should be retained.\n");
     fprintf(stderr, "  -s                       Read one whole message from STDIN.\n");
     fprintf(stderr, "  -t <topic>               MQTT-SN topic name to publish to.\n");
@@ -212,8 +212,8 @@ static void parse_opts(int argc, char** argv)
         usage();
     }
 
-    if (qos != -1 && qos != 0 && qos != 1) {
-        mqtt_sn_log_err("Only QoS level 0, 1 or -1 is supported.");
+    if (qos != -1 && qos != 0 && qos != 1 && qos != 2) {
+        mqtt_sn_log_err("Only QoS level 0,1,2 or -1 is supported.");
         exit(EXIT_FAILURE);
     }
 
