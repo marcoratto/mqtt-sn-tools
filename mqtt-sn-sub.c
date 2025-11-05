@@ -86,7 +86,7 @@ static void usage()
     fprintf(stderr, "  -k <keepalive>           keep alive in seconds for this client. Defaults to %d.\n", keep_alive);
     fprintf(stderr, "  -e <sleep>               sleep duration in seconds when disconnecting. Defaults to %d.\n", sleep_duration);
     fprintf(stderr, "  -p <port>                Network port to connect to. Defaults to %s.\n", mqtt_sn_port);
-    fprintf(stderr, "  -q <qos>                 QoS level to subscribe with (0 or 1). Defaults to %d.\n", qos);
+    fprintf(stderr, "  -q <qos>                 QoS level to subscribe with (0,1 or 2). Defaults to %d.\n", qos);
     fprintf(stderr, "  -t <topic>               MQTT-SN topic name to subscribe to. It may repeat multiple times.\n");
     fprintf(stderr, "  -T <topicid>             Pre-defined MQTT-SN topic ID to subscribe to. It may repeat multiple times.\n");
     fprintf(stderr, "  --fe                     Enables Forwarder Encapsulation. Mqtt-sn packets are encapsulated according to MQTT-SN Protocol Specification v1.2, chapter 5.5 Forwarder Encapsulation.\n");
