@@ -269,8 +269,8 @@ void* mqtt_sn_receive_packet(int sock) {
 }
 
 void* mqtt_sn_receive_frwdencap_packet(int sock, uint8_t **wireless_node_id, uint8_t *wireless_node_id_len) {
-    // static uint8_t buffer[MQTT_SN_MAX_PACKET_LENGTH + MQTT_SN_MAX_WIRELESS_NODE_ID_LENGTH + 3  + 1];
-    static uint8_t buffer[MQTT_SN_MAX_PACKET_EXT_LENGTH];    
+    static uint8_t buffer[MQTT_SN_MAX_PACKET_LENGTH + MQTT_SN_MAX_WIRELESS_NODE_ID_LENGTH + 3  + 1];
+    // static uint8_t buffer[MQTT_SN_MAX_PACKET_EXT_LENGTH];    
     struct sockaddr_storage addr;
     socklen_t slen = sizeof(addr);
     uint8_t *packet = buffer;
@@ -279,7 +279,7 @@ void* mqtt_sn_receive_frwdencap_packet(int sock, uint8_t **wireless_node_id, uin
     *wireless_node_id = NULL;
     *wireless_node_id_len = 0;
 
-    mqtt_sn_log_debug("waiting for packet...");
+    mqtt_sn_log_debug("Waiting for packet...");
 
     // Read in the packet
     bytes_read = recvfrom(sock, buffer, sizeof(buffer), 0, (struct sockaddr *)&addr, &slen);
@@ -292,6 +292,7 @@ void* mqtt_sn_receive_frwdencap_packet(int sock, uint8_t **wireless_node_id, uin
             exit(EXIT_FAILURE);
         }
     }
+	mqtt_sn_log_debug("Received %u bytes", bytes_read);
 
     // Convert the source address into a string
     if (debug) {
@@ -341,8 +342,7 @@ void* mqtt_sn_receive_frwdencap_packet(int sock, uint8_t **wireless_node_id, uin
     return packet;
 }
 
-void mqtt_sn_send_connect(int sock, const char* client_id, uint16_t keepalive, uint8_t clean_session, uint8_t lwt)
-{
+void mqtt_sn_send_connect(int sock, const char* client_id, uint16_t keepalive, uint8_t clean_session, uint8_t lwt) {
     connect_packet_t packet;
     memset(&packet, 0, sizeof(packet));
 
@@ -526,35 +526,18 @@ void mqtt_sn_send_publish(int sock, uint16_t topic_id, uint8_t topic_type, const
         if (pubcomp) {
             mqtt_sn_log_debug("Received PUBCOMP");
         } else {
-            mqtt_sn_log_warn("Failed to receive PUBCOMP after PUBLISH");
+            mqtt_sn_log_warn("Failed to receive PUBCOMP after PUBREC");
         }	            
 	}
 }
 
-void mqtt_sn_send_puback(int sock, publish_packet_t* publish, uint8_t return_code)
-{
+void mqtt_sn_send_puback(int sock, uint16_t topic_id, uint16_t message_id, uint8_t return_code) {
     puback_packet_t puback;
     memset(&puback, 0, sizeof(puback));
 
     puback.type = MQTT_SN_TYPE_PUBACK;
-    puback.topic_id = publish->topic_id;
-    puback.message_id = publish->message_id;
-    puback.return_code = return_code;
-    puback.length = 0x07;
-
-    mqtt_sn_log_debug("Sending PUBACK packet...");
-
-    mqtt_sn_send_packet(sock, &puback);
-}
-
-void mqtt_sn_send_puback_ext(int sock, publish_ext_packet_t* publish, uint8_t return_code)
-{
-    puback_packet_t puback;
-    memset(&puback, 0, sizeof(puback));
-
-    puback.type = MQTT_SN_TYPE_PUBACK;
-    puback.topic_id = publish->topic_id;
-    puback.message_id = publish->message_id;
+    puback.topic_id = topic_id;
+    puback.message_id = message_id;
     puback.return_code = return_code;
     puback.length = 0x07;
 
@@ -651,8 +634,8 @@ void mqtt_sn_receive_disconnect(int sock)
 }
 
 
-void mqtt_sn_receive_connack(int sock)
-{
+void mqtt_sn_receive_connack(int sock) {
+	mqtt_sn_log_debug("Waiting for CONNACK packet...");
     connack_packet_t *packet = mqtt_sn_receive_packet(sock);
 
     if (packet == NULL) {
@@ -938,8 +921,7 @@ uint16_t mqtt_sn_receive_suback(int sock)
     return received_topic_id;
 }
 
-int mqtt_sn_select(int sock)
-{
+int mqtt_sn_select(int sock) {
     struct timeval tv;
     fd_set rfd;
     int ret;
@@ -980,6 +962,7 @@ void* mqtt_sn_wait_for(uint8_t type, int sock)
             char* packet = mqtt_sn_receive_packet(sock);
             if (packet) {
 				if (packet[0] == 0x01) {
+					mqtt_sn_log_debug("Received extended packet.");
 					switch(packet[3]) {
 						case MQTT_SN_TYPE_PUBLISH:
 							mqtt_sn_print_publish_packet((publish_packet_t *)packet);
@@ -1016,6 +999,7 @@ void* mqtt_sn_wait_for(uint8_t type, int sock)
 						return packet;
 					}
 				} else {
+						mqtt_sn_log_debug("Received normal packet.");
 						switch(packet[1]) {
 						case MQTT_SN_TYPE_PUBLISH:
 							mqtt_sn_print_publish_packet((publish_packet_t *)packet);

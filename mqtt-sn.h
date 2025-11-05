@@ -35,14 +35,14 @@
 #endif
 
 #define MQTT_SN_DEFAULT_PORT       "2442"
-#define MQTT_SN_DEFAULT_TIMEOUT    (10)
-#define MQTT_SN_DEFAULT_KEEP_ALIVE (10)
+#define MQTT_SN_DEFAULT_TIMEOUT    (60)
+#define MQTT_SN_DEFAULT_KEEP_ALIVE (30)
 
 #define MQTT_SN_MAX_PACKET_LENGTH  (255)
 #define MQTT_SN_MAX_PAYLOAD_LENGTH (MQTT_SN_MAX_PACKET_LENGTH-7)
 #define MQTT_SN_MAX_TOPIC_LENGTH   (MQTT_SN_MAX_PACKET_LENGTH-6)
 
-#define MQTT_SN_MAX_PACKET_EXT_LENGTH  (65535)
+#define MQTT_SN_MAX_PACKET_EXT_LENGTH  (1024)
 #define MQTT_SN_MAX_PAYLOAD_EXT_LENGTH (MQTT_SN_MAX_PACKET_EXT_LENGTH-7)
 #define MQTT_SN_MAX_TOPIC_EXT_LENGTH   (MQTT_SN_MAX_PACKET_EXT_LENGTH-6)
 
@@ -281,8 +281,7 @@ void mqtt_sn_send_connect(int sock, const char* client_id, uint16_t keepalive, u
 
 void mqtt_sn_send_register(int sock, const char* topic_name);
 void mqtt_sn_send_publish(int sock, uint16_t topic_id, uint8_t topic_type, const void* data, uint16_t data_len, int8_t qos, uint8_t retain);
-void mqtt_sn_send_puback(int sock, publish_packet_t* publish, uint8_t return_code);
-void mqtt_sn_send_puback_ext(int sock, publish_ext_packet_t* publish, uint8_t return_code);
+void mqtt_sn_send_puback(int sock, uint16_t topic_id, uint16_t message_id, uint8_t return_code);
 
 void mqtt_sn_send_subscribe_topic_name(int sock, const char* topic_name, uint8_t qos);
 void mqtt_sn_send_subscribe_topic_id(int sock, uint16_t topic_id, uint8_t qos);

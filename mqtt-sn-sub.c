@@ -53,6 +53,9 @@ const char *mqtt_sn_host = "127.0.0.1";
 const char *mqtt_sn_port = MQTT_SN_DEFAULT_PORT;
 uint16_t source_port = 0;
 uint16_t keep_alive = MQTT_SN_DEFAULT_KEEP_ALIVE;
+
+uint16_t timeout = MQTT_SN_DEFAULT_TIMEOUT;
+
 uint16_t sleep_duration = 0;
 int8_t qos = 0;
 uint8_t retain = FALSE;
@@ -68,6 +71,8 @@ const char *lwt_topic = NULL;
 const char *lwt_payload = NULL;
 
 uint8_t keep_running = TRUE;
+
+char *buffer;
 
 static void usage()
 {
@@ -232,8 +237,10 @@ static void parse_opts(int argc, char** argv)
     }
 }
 
-static void termination_handler (int signum)
-{
+static void termination_handler (int signum) {
+    // Signal the main thread to stop
+    keep_running = FALSE;
+    	
     switch(signum) {
         case SIGHUP:
             mqtt_sn_log_debug("Got hangup signal.");
@@ -245,9 +252,6 @@ static void termination_handler (int signum)
             mqtt_sn_log_debug("Got interrupt signal.");
             break;
     }
-
-    // Signal the main thread to stop
-    keep_running = FALSE;
 }
 
 int main(int argc, char* argv[])
@@ -262,12 +266,7 @@ int main(int argc, char* argv[])
     // Enable debugging?
     mqtt_sn_set_debug(debug);
     mqtt_sn_set_verbose(verbose);
-    mqtt_sn_set_timeout(keep_alive / 2);
-
-    // Setup signal handlers
-    signal(SIGTERM, termination_handler);
-    signal(SIGINT, termination_handler);
-    signal(SIGHUP, termination_handler);
+    mqtt_sn_set_timeout(timeout);
 
     // Create a UDP socket
     sock = mqtt_sn_create_socket(mqtt_sn_host, mqtt_sn_port, source_port);
@@ -309,11 +308,16 @@ int main(int argc, char* argv[])
             mqtt_sn_receive_suback(sock);
         }
         
-        void *buffer = malloc(MQTT_SN_MAX_PACKET_EXT_LENGTH);
+        buffer = (char *) malloc(MQTT_SN_MAX_PACKET_EXT_LENGTH);
 		if (!buffer) {
 			mqtt_sn_log_err("Failed to allocate memory");
 			exit(EXIT_FAILURE);
 		}
+
+		// Setup signal handlers
+		signal(SIGTERM, termination_handler);
+		signal(SIGINT, termination_handler);
+		signal(SIGHUP, termination_handler);
 
         // Keep processing packets until process is terminated
         while(keep_running) {
@@ -321,27 +325,50 @@ int main(int argc, char* argv[])
             buffer = mqtt_sn_wait_for(MQTT_SN_TYPE_PUBLISH, sock);
             if (buffer) {
 			    uint8_t first_byte = ((uint8_t *)buffer)[0];
+			    uint8_t packet_qos = 0;
+			    uint16_t message_id = 0;
+			    uint16_t topic_id = 0;
 				if (first_byte == 0x01) {
 					publish_ext_packet_t *packet = (publish_ext_packet_t *)buffer;										
-				 	uint8_t packet_qos = packet->flags & MQTT_SN_FLAG_QOS_MASK;
-					if (packet_qos == MQTT_SN_FLAG_QOS_1) {
-						mqtt_sn_send_puback_ext(sock, packet, MQTT_SN_ACCEPTED);
-					}
-
-					if (single_message) {
-						break;
-					}
+				 	packet_qos = packet->flags & MQTT_SN_FLAG_QOS_MASK;
+				 	message_id = packet->message_id;
+				 	topic_id = packet->topic_id;
 				} else {
 					publish_packet_t *packet = (publish_packet_t *)buffer;
-				 	uint8_t packet_qos = packet->flags & MQTT_SN_FLAG_QOS_MASK;
-					if (packet_qos == MQTT_SN_FLAG_QOS_1) {
-						mqtt_sn_send_puback(sock, packet, MQTT_SN_ACCEPTED);
-					}
-
-					if (single_message) {
-						break;
-					}
+					packet_qos = packet->flags & MQTT_SN_FLAG_QOS_MASK;
+					message_id = packet->message_id;
+					topic_id = packet->topic_id;
 				}
+				if (packet_qos == MQTT_SN_FLAG_QOS_1) {
+					mqtt_sn_send_puback(sock, topic_id, message_id, MQTT_SN_ACCEPTED);
+				} else if (packet_qos == MQTT_SN_FLAG_QOS_2) {
+					pubrec_packet_t pubrec;
+					memset(&pubrec, 0, sizeof(pubrec));
+					pubrec.type = MQTT_SN_TYPE_PUBREC;
+					pubrec.message_id = message_id;
+					pubrec.length = 4;
+					mqtt_sn_log_debug("Sending PUBREC packet...");
+					mqtt_sn_send_packet(sock, &pubrec); 
+					
+					pubrel_packet_t *pubrel = mqtt_sn_wait_for(MQTT_SN_TYPE_PUBREL, sock);
+					if (pubrel) {
+						mqtt_sn_log_debug("Received PUBREL");
+					} else {
+						mqtt_sn_log_warn("Failed to receive PUBREL after PUBREC");
+					}		  
+					
+					pubcomp_packet_t pubcomp;
+					memset(&pubcomp, 0, sizeof(pubcomp));
+					pubcomp.type = MQTT_SN_TYPE_PUBCOMP;
+					pubcomp.message_id = message_id;
+					pubcomp.length = 4;
+					mqtt_sn_log_debug("Sending PUBCOMP packet...");
+					mqtt_sn_send_packet(sock, &pubcomp); 
+				}
+
+				if (single_message) {
+					break;
+				}				
 			}
 
         }
@@ -355,6 +382,7 @@ int main(int argc, char* argv[])
     }
 
     mqtt_sn_cleanup();
+    free(buffer);
     free(topic_name_ar);
     free(predef_topic_id_ar);
 
