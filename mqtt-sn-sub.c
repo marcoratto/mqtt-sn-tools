@@ -342,13 +342,7 @@ int main(int argc, char* argv[])
 				if (packet_qos == MQTT_SN_FLAG_QOS_1) {
 					mqtt_sn_send_puback(sock, topic_id, message_id, MQTT_SN_ACCEPTED);
 				} else if (packet_qos == MQTT_SN_FLAG_QOS_2) {
-					pubrec_packet_t pubrec;
-					memset(&pubrec, 0, sizeof(pubrec));
-					pubrec.type = MQTT_SN_TYPE_PUBREC;
-					pubrec.message_id = message_id;
-					pubrec.length = 4;
-					mqtt_sn_log_debug("Sending PUBREC packet...");
-					mqtt_sn_send_packet(sock, &pubrec); 
+					mqtt_sn_send_pubrec(sock, message_id); 
 					
 					pubrel_packet_t *pubrel = mqtt_sn_wait_for(MQTT_SN_TYPE_PUBREL, sock);
 					if (pubrel) {
@@ -357,13 +351,7 @@ int main(int argc, char* argv[])
 						mqtt_sn_log_warn("Failed to receive PUBREL after PUBREC");
 					}		  
 					
-					pubcomp_packet_t pubcomp;
-					memset(&pubcomp, 0, sizeof(pubcomp));
-					pubcomp.type = MQTT_SN_TYPE_PUBCOMP;
-					pubcomp.message_id = message_id;
-					pubcomp.length = 4;
-					mqtt_sn_log_debug("Sending PUBCOMP packet...");
-					mqtt_sn_send_packet(sock, &pubcomp); 
+					mqtt_sn_send_pubcomp(sock, message_id); 
 				}
 
 				if (single_message) {

@@ -514,19 +514,13 @@ void mqtt_sn_send_publish(int sock, uint16_t topic_id, uint8_t topic_type, const
         } else {
             mqtt_sn_log_warn("Failed to receive PUBREC after PUBLISH");
         }		
-        pubrel_packet_t pubrel;
-        memset(&pubrel, 0, sizeof(pubrel));
-        pubrel.type = MQTT_SN_TYPE_PUBREL;
-        pubrel.message_id = pubrec->message_id;
-        pubrel.length = 4;
-		mqtt_sn_log_debug("Sending PUBREC packet...");
-        mqtt_sn_send_packet(sock, &pubrel);    
+        mqtt_sn_send_pubrel(sock, pubrec->message_id);  
         
 		pubcomp_packet_t *pubcomp = mqtt_sn_wait_for(MQTT_SN_TYPE_PUBCOMP, sock);
         if (pubcomp) {
             mqtt_sn_log_debug("Received PUBCOMP");
         } else {
-            mqtt_sn_log_warn("Failed to receive PUBCOMP after PUBREC");
+            mqtt_sn_log_warn("Failed to receive PUBCOMP after PUBREL");
         }	            
 	}
 }
@@ -546,8 +540,43 @@ void mqtt_sn_send_puback(int sock, uint16_t topic_id, uint16_t message_id, uint8
     mqtt_sn_send_packet(sock, &puback);
 }
 
-void mqtt_sn_send_subscribe_topic_name(int sock, const char* topic_name, uint8_t qos)
-{
+void mqtt_sn_send_pubrec(int sock, uint16_t message_id) {
+    pubrec_packet_t packet;
+    memset(&packet, 0, sizeof(packet));
+
+    packet.type = MQTT_SN_TYPE_PUBREC;
+    packet.message_id = message_id;
+    packet.length = 0x04;
+
+    mqtt_sn_log_debug("Sending PUBREC packet...");
+    mqtt_sn_send_packet(sock, &packet);
+}
+
+void mqtt_sn_send_pubrel(int sock, uint16_t message_id) {
+    pubrel_packet_t packet;
+    memset(&packet, 0, sizeof(packet));
+
+    packet.type = MQTT_SN_TYPE_PUBREL;
+    packet.message_id = message_id;
+    packet.length = 0x04;
+
+    mqtt_sn_log_debug("Sending PUBREL packet...");
+    mqtt_sn_send_packet(sock, &packet);
+}
+
+void mqtt_sn_send_pubcomp(int sock, uint16_t message_id) {
+    pubcomp_packet_t packet;
+    memset(&packet, 0, sizeof(packet));
+
+    packet.type = MQTT_SN_TYPE_PUBCOMP;
+    packet.message_id = message_id;
+    packet.length = 0x04;
+
+    mqtt_sn_log_debug("Sending PUBCOMP packet...");
+    mqtt_sn_send_packet(sock, &packet);
+}
+
+void mqtt_sn_send_subscribe_topic_name(int sock, const char* topic_name, uint8_t qos) {
     size_t topic_name_len = strlen(topic_name);
     subscribe_packet_t packet;
     memset(&packet, 0, sizeof(packet));

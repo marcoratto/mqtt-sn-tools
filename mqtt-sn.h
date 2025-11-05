@@ -282,6 +282,9 @@ void mqtt_sn_send_connect(int sock, const char* client_id, uint16_t keepalive, u
 void mqtt_sn_send_register(int sock, const char* topic_name);
 void mqtt_sn_send_publish(int sock, uint16_t topic_id, uint8_t topic_type, const void* data, uint16_t data_len, int8_t qos, uint8_t retain);
 void mqtt_sn_send_puback(int sock, uint16_t topic_id, uint16_t message_id, uint8_t return_code);
+void mqtt_sn_send_pubrec(int sock, uint16_t message_id);
+void mqtt_sn_send_pubrel(int sock, uint16_t message_id);
+void mqtt_sn_send_pubcomp(int sock, uint16_t message_id);
 
 void mqtt_sn_send_subscribe_topic_name(int sock, const char* topic_name, uint8_t qos);
 void mqtt_sn_send_subscribe_topic_id(int sock, uint16_t topic_id, uint8_t qos);
